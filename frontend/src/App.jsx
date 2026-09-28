@@ -1,17 +1,25 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 
-// Format bytes into human readable format
+// Format bytes into clean human readable format
 function formatBytes(bytes, decimals = 1) {
-  if (!+bytes) return '0 Bytes';
+  if (!+bytes) return '0 B';
   const k = 1024;
   const dm = decimals < 0 ? 0 : decimals;
-  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const sizes = ['B', 'KB', 'MB', 'GB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
 }
 
-// Format remaining time in a human-friendly format
+// Get extension from filename
+function getFileExtension(filename) {
+  if (!filename) return 'FILE';
+  const parts = filename.split('.');
+  if (parts.length <= 1) return 'FILE';
+  return parts.pop().toUpperCase().slice(0, 4);
+}
+
+// Format remaining time
 function formatExpiryTime(expiresAt) {
   if (!expiresAt) return '';
   const diff = new Date(expiresAt).getTime() - Date.now();
@@ -19,9 +27,9 @@ function formatExpiryTime(expiresAt) {
   const hours = Math.floor(diff / (1000 * 60 * 60));
   const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
   if (hours > 0) {
-    return `${hours}h ${minutes}m remaining`;
+    return `${hours}h ${minutes}m left`;
   }
-  return `${minutes}m remaining`;
+  return `${minutes}m left`;
 }
 
 // Safe share URL generator
@@ -33,30 +41,35 @@ function getShareUrl(id) {
 // Configurable API base for production / cross-origin deployments
 const API_BASE = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace(/\/$/, '') : '';
 
-// Sleek minimalist SVG Icons
+// Futuristic SVG Icons
 const Icons = {
+  Bolt: () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+    </svg>
+  ),
   UploadCloud: () => (
-    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242" />
       <path d="M12 12v9" />
       <path d="m16 16-4-4-4 4" />
     </svg>
   ),
   File: () => (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
       <polyline points="14 2 14 8 20 8" />
     </svg>
   ),
   Download: () => (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
       <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
       <polyline points="7 10 12 15 17 10" />
       <line x1="12" y1="15" x2="12" y2="3" />
     </svg>
   ),
   Check: () => (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
       <polyline points="20 6 9 17 4 12" />
     </svg>
   ),
@@ -73,7 +86,7 @@ const Icons = {
     </svg>
   ),
   QrCode: () => (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <rect width="5" height="5" x="3" y="3" rx="1" />
       <rect width="5" height="5" x="16" y="3" rx="1" />
       <rect width="5" height="5" x="3" y="16" rx="1" />
@@ -88,6 +101,12 @@ const Icons = {
       <path d="M12 21v-1" />
     </svg>
   ),
+  Link: () => (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+    </svg>
+  ),
   Alert: () => (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="12" cy="12" r="10" />
@@ -96,13 +115,13 @@ const Icons = {
     </svg>
   ),
   Clock: () => (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="12" cy="12" r="10" />
       <polyline points="12 6 12 12 16 14" />
     </svg>
   ),
   External: () => (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
       <polyline points="15 3 21 3 21 9" />
       <line x1="10" y1="14" x2="21" y2="3" />
@@ -112,15 +131,24 @@ const Icons = {
 
 export default function App() {
   const [currentRoute, setCurrentRoute] = useState({ view: 'home', shareId: null });
+  const [mousePos, setMousePos] = useState({ x: -500, y: -500 });
 
-  // Read URL on mount and handle forward/back buttons
+  // Interactive mouse glow movement
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      setMousePos({ x: e.clientX, y: e.clientY });
+    };
+    window.addEventListener('mousemove', handleMouseMove, { passive: true });
+    return () => window.removeEventListener('mousemove', handleMouseMove);
+  }, []);
+
+  // Parse browser route on load / history pop
   useEffect(() => {
     function parseRoute() {
       const path = window.location.pathname;
       const search = window.location.search;
       const params = new URLSearchParams(search);
 
-      // Support /share/:id or ?share=:id or ?id=:id
       const shareParam = params.get('share') || params.get('id');
       if (shareParam) {
         setCurrentRoute({ view: 'download', shareId: shareParam });
@@ -155,37 +183,43 @@ export default function App() {
 
   return (
     <>
-      {/* Floating Animated Mesh Orbs */}
-      <div className="bg-ambient">
-        <div className="ambient-orb orb-1"></div>
-        <div className="ambient-orb orb-2"></div>
-      </div>
+      {/* Sci-Fi Ambient Overlays */}
+      <div className="bg-grid-overlay"></div>
+      <div className="neon-nebula-1"></div>
+      <div className="neon-nebula-2"></div>
 
-      <div className="app-container">
-        {/* Minimal Header */}
-        <header className="nav-header">
-          <div className="brand-link" onClick={() => navigateTo('home')}>
-            <div className="brand-symbol">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242" />
-                <path d="M12 12v9" />
-                <path d="m16 16-4-4-4 4" />
-              </svg>
+      {/* Dynamic Cursor Spotlight Glow */}
+      <div 
+        className="mouse-spotlight"
+        style={{
+          left: `${mousePos.x}px`,
+          top: `${mousePos.y}px`
+        }}
+      ></div>
+
+      <div className="genz-app-container">
+        {/* Floating Dynamic Island Navbar */}
+        <div className="nav-island-wrapper">
+          <header className="nav-island">
+            <div className="brand-capsule" onClick={() => navigateTo('home')}>
+              <div className="brand-orb-icon">
+                <Icons.Bolt />
+              </div>
+              <span className="brand-name">
+                QuickShare
+                <span className="brand-dot-pulse"></span>
+              </span>
             </div>
-            <span className="brand-text">
-              QuickShare
-              <span className="brand-dot"></span>
-            </span>
-          </div>
 
-          <div className="nav-status">
-            <span className="status-indicator"></span>
-            <span>24h Ephemeral Transfers</span>
-          </div>
-        </header>
+            <div className="nav-chip-badge">
+              <span className="status-ring"></span>
+              <span>EPHEMERAL &bull; 24H</span>
+            </div>
+          </header>
+        </div>
 
-        {/* Dynamic Route View */}
-        <main className="main-wrapper">
+        {/* Main Content Hub */}
+        <main className="main-hub">
           {currentRoute.view === 'download' && currentRoute.shareId ? (
             <DownloadView 
               shareId={currentRoute.shareId} 
@@ -196,17 +230,17 @@ export default function App() {
           )}
         </main>
 
-        {/* Minimal Footer */}
-        <footer className="minimal-footer">
-          <span>&copy; {new Date().getFullYear()} QuickShare &bull; Minimalist Temporary File Sharing</span>
-          <span>Max 25 MB &bull; Direct P2P-style delivery</span>
+        {/* Minimalist Sci-Fi Footer */}
+        <footer className="hud-footer">
+          <span>// QUICKSHARE &bull; PRIVATE P2P-STYLE TRANSFER</span>
+          <span>AUTODELETE: 24.00.00 &bull; 25MB MAXIMUM</span>
         </footer>
       </div>
     </>
   );
 }
 
-// ================= MINIMALIST HOME & UPLOAD VIEW ================= //
+// ================= GEN-Z MINIMALIST UPLOAD HUB ================= //
 function HomeView({ onNavigateToDownload }) {
   const [selectedFile, setSelectedFile] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -215,7 +249,7 @@ function HomeView({ onNavigateToDownload }) {
   const [errorMessage, setErrorMessage] = useState('');
   const [uploadResult, setUploadResult] = useState(null);
   const [copied, setCopied] = useState(false);
-  const [showQrCode, setShowQrCode] = useState(true);
+  const [activeTab, setActiveTab] = useState('qr'); // 'qr' | 'link'
 
   const fileInputRef = useRef(null);
   const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25 MB
@@ -224,7 +258,7 @@ function HomeView({ onNavigateToDownload }) {
     if (!file) return;
 
     if (file.size > MAX_FILE_SIZE) {
-      setErrorMessage(`"${file.name}" is ${formatBytes(file.size)}. Maximum allowed size is 25 MB.`);
+      setErrorMessage(`File exceeds 25 MB limit (${formatBytes(file.size)}).`);
       setSelectedFile(null);
       setUploadStatus('error');
       return;
@@ -286,7 +320,7 @@ function HomeView({ onNavigateToDownload }) {
           setUploadStatus('success');
         } else {
           setUploadStatus('error');
-          setErrorMessage(res.error || 'Failed to upload file.');
+          setErrorMessage(res.error || 'Failed to upload.');
         }
       } catch (err) {
         setUploadStatus('error');
@@ -296,7 +330,7 @@ function HomeView({ onNavigateToDownload }) {
 
     xhr.onerror = () => {
       setUploadStatus('error');
-      setErrorMessage('Could not connect to backend server. Make sure port 5001 is running.');
+      setErrorMessage('Network error: Could not reach backend server.');
     };
 
     xhr.send(formData);
@@ -325,118 +359,133 @@ function HomeView({ onNavigateToDownload }) {
 
   return (
     <>
-      {/* Sleek Minimalist Hero */}
-      <div className="hero-minimal">
-        <div className="hero-pill">
-          <span>Self-Destructs in 24 Hours</span>
+      {/* High-Impact Gen-Z Typography Hero */}
+      <div className="hero-hub">
+        <div className="hero-neon-pill">
+          <Icons.Bolt />
+          <span>AUTONOMOUS TEMPORARY TRANSFER</span>
         </div>
-        <h1 className="hero-heading">
-          Drop a file. <br />
-          <span>Share with anyone.</span>
+        <h1 className="hero-big-title">
+          BEAM FILES. <br />
+          <span className="text-gradient-neon">INTO OBLIVION.</span>
         </h1>
-        <p className="hero-desc">
-          Instant, anonymous temporary transfers. Up to 25 MB with direct link and QR code access.
-        </p>
+        <div className="hero-meta-chips">
+          <span className="tag-spec">// 25MB CAP</span>
+          <span className="tag-spec">// 24H LIFESPAN</span>
+          <span className="tag-spec">// NO AUTH</span>
+          <span className="tag-spec">// QR READY</span>
+        </div>
       </div>
 
-      <div className="card-minimal">
+      <div className="cyber-card">
         {uploadStatus === 'success' && uploadResult ? (
-          /* ================= SUCCESS & QR CODE VIEW ================= */
-          <div className="success-wrapper">
-            <div className="success-badge-pop">
+          /* ================= SUCCESS & QR HUB ================= */
+          <div className="success-hub">
+            <div className="success-pop-halo">
               <Icons.Check />
             </div>
-            <h2 className="success-headline">Transfer Ready!</h2>
-            <p className="success-sub">
-              <strong>{uploadResult.originalName}</strong> ({formatBytes(uploadResult.size)})
+            <h2 className="success-title-cyber">BEAM READY</h2>
+            <p className="success-caption">
+              <strong>{uploadResult.originalName}</strong> &bull; {formatBytes(uploadResult.size)}
             </p>
 
-            {/* Share Link Row with Copy Button */}
-            <div className="link-copy-container">
-              <input 
-                type="text" 
-                readOnly 
-                value={getShareUrl(uploadResult.id)} 
-                className="link-input-field"
-                id="share-link-input"
-              />
+            {/* Segmented Switcher for QR vs Link */}
+            <div className="segmented-tabs-row">
               <button 
-                className={`btn-copy-action ${copied ? 'copied' : ''}`}
-                onClick={handleCopyLink}
-                id="copy-link-button"
-              >
-                {copied ? (
-                  <>
-                    <Icons.Check />
-                    <span>Copied</span>
-                  </>
-                ) : (
-                  <>
-                    <Icons.Copy />
-                    <span>Copy</span>
-                  </>
-                )}
-              </button>
-            </div>
-
-            {/* QR Code Section with Toggle & Scanning Laser */}
-            <div style={{ margin: '8px 0' }}>
-              <button 
-                type="button"
-                className="qr-toggle-btn"
-                onClick={() => setShowQrCode(!showQrCode)}
-                id="toggle-qr-btn"
+                type="button" 
+                className={`tab-btn ${activeTab === 'qr' ? 'active' : ''}`}
+                onClick={() => setActiveTab('qr')}
               >
                 <Icons.QrCode />
-                <span>{showQrCode ? 'Hide QR Code' : 'Show QR Code'}</span>
+                <span>QR Code</span>
+              </button>
+              <button 
+                type="button" 
+                className={`tab-btn ${activeTab === 'link' ? 'active' : ''}`}
+                onClick={() => setActiveTab('link')}
+              >
+                <Icons.Link />
+                <span>Share Link</span>
               </button>
             </div>
 
-            {showQrCode && (
-              <div className="qr-card-section" id="qr-code-card">
-                <div className="qr-code-frame">
-                  {/* Animated futuristic scan laser */}
-                  <div className="qr-scanner-laser"></div>
+            {/* QR Code Tab with Laser Beam */}
+            {activeTab === 'qr' && (
+              <div className="qr-cyber-box" id="qr-code-box">
+                <div className="qr-plate">
+                  <div className="qr-scanner-beam"></div>
                   <QRCodeSVG 
                     value={getShareUrl(uploadResult.id)}
-                    size={164}
+                    size={168}
                     bgColor="#ffffff"
-                    fgColor="#0a0d14"
+                    fgColor="#050609"
                     level="M"
                     includeMargin={false}
                   />
                 </div>
-                <div className="qr-caption">
+                <div className="qr-hint-text">
                   <Icons.QrCode />
-                  <span>Scan with mobile camera to download</span>
+                  <span>POINT PHONE CAMERA TO DOWNLOAD DIRECTLY</span>
                 </div>
               </div>
             )}
 
-            <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+            {/* Link Tab */}
+            {activeTab === 'link' && (
+              <div className="cyber-link-bar">
+                <input 
+                  type="text" 
+                  readOnly 
+                  value={getShareUrl(uploadResult.id)} 
+                  className="cyber-link-input"
+                  id="share-link-input"
+                />
+                <button 
+                  className={`btn-cyber-copy ${copied ? 'copied' : ''}`}
+                  onClick={handleCopyLink}
+                  id="copy-link-btn"
+                >
+                  {copied ? (
+                    <>
+                      <Icons.Check />
+                      <span>COPIED</span>
+                    </>
+                  ) : (
+                    <>
+                      <Icons.Copy />
+                      <span>COPY</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
+
+            {/* Dual Action Row */}
+            <div className="success-action-row">
               <button 
-                className="btn-action btn-action-secondary" 
+                className="btn-cyber-secondary"
                 onClick={() => onNavigateToDownload(uploadResult.id)}
-                id="open-download-page-btn"
+                id="open-page-btn"
               >
                 <Icons.External />
                 <span>Open Page</span>
               </button>
               <button 
-                className="btn-action btn-action-primary" 
+                className="btn-neon-cta"
+                style={{ flex: 1.2, padding: '12px 18px' }}
                 onClick={handleReset}
-                id="new-upload-btn"
+                id="beam-another-btn"
               >
-                <Icons.UploadCloud />
-                <span>Send Another</span>
+                <Icons.Bolt />
+                <span>Beam Another</span>
               </button>
             </div>
           </div>
         ) : (
-          /* ================= DRAG & DROP UPLOAD FORM ================= */
+          /* ================= INTERACTIVE DROPZONE ================= */
           <>
             <div 
-              className={`dropzone-animated ${isDragging ? 'dragging' : ''}`}
+              className={`dropzone-cyber ${isDragging ? 'drag-active' : ''}`}
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
@@ -450,51 +499,51 @@ function HomeView({ onNavigateToDownload }) {
                 onChange={(e) => handleFileSelect(e.target.files[0])}
                 id="file-input"
               />
-              <div className="dropzone-icon">
+              <div className="orbit-icon-container">
                 <Icons.UploadCloud />
               </div>
-              <h3 className="drop-title">
-                {isDragging ? 'Release to upload' : 'Drag & drop your file here'}
+              <h3 className="drop-prompt">
+                {isDragging ? 'RELEASE TO BEAM' : 'DROP FILE ANYWHERE'}
               </h3>
-              <p className="drop-subtitle">or choose from your device</p>
+              <p className="drop-subtext">Drag & drop or tap to browse storage</p>
               
               <button 
                 type="button" 
-                className="btn-browse"
+                className="btn-select-pill"
                 onClick={(e) => {
                   e.stopPropagation();
                   fileInputRef.current && fileInputRef.current.click();
                 }}
-                id="browse-btn"
+                id="choose-file-btn"
               >
                 <Icons.File />
-                <span>Select File</span>
+                <span>Browse Files</span>
               </button>
             </div>
 
-            {/* Selected File Summary */}
+            {/* Selected File Capsule */}
             {selectedFile && (
-              <div className="selected-file-strip" id="selected-file-strip">
-                <div className="file-lead">
-                  <div className="file-type-icon">
-                    <Icons.File />
-                  </div>
-                  <div style={{ minWidth: 0 }}>
-                    <span className="file-title" title={selectedFile.name}>
+              <div className="file-capsule-strip" id="selected-file-capsule">
+                <div className="file-capsule-left">
+                  <span className="ext-badge">
+                    {getFileExtension(selectedFile.name)}
+                  </span>
+                  <div className="file-capsule-details">
+                    <span className="file-name-text" title={selectedFile.name}>
                       {selectedFile.name}
                     </span>
-                    <span className="file-meta-sub">
-                      {formatBytes(selectedFile.size)} &bull; {selectedFile.type || 'Binary file'}
+                    <span className="file-size-spec">
+                      {formatBytes(selectedFile.size)} &bull; {selectedFile.type || 'RAW BINARY'}
                     </span>
                   </div>
                 </div>
                 {uploadStatus !== 'uploading' && (
                   <button 
                     type="button" 
-                    className="btn-remove-file"
+                    className="btn-file-delete"
                     onClick={handleReset}
                     title="Remove file"
-                    id="remove-file-button"
+                    id="remove-file-btn"
                   >
                     <Icons.Close />
                   </button>
@@ -502,47 +551,47 @@ function HomeView({ onNavigateToDownload }) {
               </div>
             )}
 
-            {/* Shimmering Animated Progress Bar */}
+            {/* Fluid Laser Upload Progress */}
             {uploadStatus === 'uploading' && (
-              <div className="progress-wrap">
-                <div className="progress-track">
+              <div className="progress-laser-box">
+                <div className="progress-track-cyber">
                   <div 
-                    className="progress-fill" 
+                    className="progress-fill-cyber" 
                     style={{ width: `${uploadProgress}%` }}
                   ></div>
                 </div>
-                <div className="progress-labels">
-                  <span>Uploading securely...</span>
+                <div className="progress-stats-cyber">
+                  <span>TRANSMITTING TO CLOUD...</span>
                   <span>{uploadProgress}%</span>
                 </div>
               </div>
             )}
 
-            {/* Error Strip */}
+            {/* Error Alert */}
             {errorMessage && (
-              <div className="alert-strip" id="upload-error-alert">
+              <div className="alert-cyber-strip" id="error-alert">
                 <Icons.Alert />
                 <span>{errorMessage}</span>
               </div>
             )}
 
-            {/* Submit Upload Button */}
+            {/* Primary Action Button */}
             <button 
-              className="btn-action btn-action-primary"
+              className="btn-neon-cta"
               style={{ marginTop: '16px' }}
               disabled={!selectedFile || uploadStatus === 'uploading'}
               onClick={handleUpload}
-              id="upload-submit-btn"
+              id="upload-button"
             >
               {uploadStatus === 'uploading' ? (
                 <>
-                  <div className="spinner-anim"></div>
-                  <span>Uploading {uploadProgress}%</span>
+                  <div className="spinner-cyber"></div>
+                  <span>BEAMING {uploadProgress}%</span>
                 </>
               ) : (
                 <>
-                  <Icons.UploadCloud />
-                  <span>Generate Share Link & QR</span>
+                  <Icons.Bolt />
+                  <span>GENERATE BEAM LINK & QR</span>
                 </>
               )}
             </button>
@@ -553,7 +602,7 @@ function HomeView({ onNavigateToDownload }) {
   );
 }
 
-// ================= MINIMALIST DOWNLOAD VIEW ================= //
+// ================= GEN-Z MINIMALIST DOWNLOAD HUD ================= //
 function DownloadView({ shareId, onGoHome }) {
   const [fileData, setFileData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -573,12 +622,12 @@ function DownloadView({ shareId, onGoHome }) {
         if (res.status === 200 && data.success) {
           setFileData(data.file);
         } else {
-          setError(data.error || 'This file is no longer available or the link is invalid.');
+          setError(data.error || 'Transfer link has expired or is invalid.');
         }
       })
       .catch(() => {
         if (isMounted) {
-          setError('Unable to connect to QuickShare server.');
+          setError('Unable to reach QuickShare cluster. Check connection.');
         }
       })
       .finally(() => {
@@ -607,53 +656,57 @@ function DownloadView({ shareId, onGoHome }) {
   };
 
   return (
-    <div className="card-minimal" style={{ maxWidth: '480px', textAlign: 'center' }}>
+    <div className="cyber-card" style={{ maxWidth: '480px', textAlign: 'center' }}>
       {loading ? (
-        <div style={{ padding: '40px 0' }}>
-          <div className="spinner-anim" style={{ width: '32px', height: '32px', margin: '0 auto 16px' }}></div>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Locating file...</p>
+        <div style={{ padding: '36px 0' }}>
+          <div className="spinner-cyber" style={{ width: '32px', height: '32px', borderTopColor: '#00f0ff', margin: '0 auto 16px' }}></div>
+          <p style={{ color: 'var(--text-dim)', fontFamily: 'var(--font-code)', fontSize: '0.85rem' }}>
+            SCANNING CLOUD REPOSITORY...
+          </p>
         </div>
       ) : error ? (
         <div style={{ padding: '16px 0' }}>
-          <div className="success-badge-pop" style={{ borderColor: 'var(--danger)', color: 'var(--danger)', background: 'var(--danger-bg)' }}>
+          <div className="success-pop-halo" style={{ borderColor: 'var(--danger)', color: 'var(--danger)', background: 'var(--danger-bg)' }}>
             <Icons.Alert />
           </div>
-          <h2 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '8px' }}>File Unavailable</h2>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', marginBottom: '24px', lineHeight: 1.6 }}>
+          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.35rem', fontWeight: 700, marginBottom: '6px' }}>
+            TRANSFER EXPIRED
+          </h2>
+          <p style={{ color: 'var(--text-dim)', fontSize: '0.86rem', marginBottom: '22px', lineHeight: 1.6 }}>
             {error}
           </p>
-          <button className="btn-action btn-action-primary" onClick={onGoHome} id="back-home-btn">
-            <span>Upload a New File</span>
+          <button className="btn-neon-cta" onClick={onGoHome} id="back-home-btn">
+            <span>BEAM A NEW FILE</span>
           </button>
         </div>
       ) : fileData ? (
         <div>
-          <div className="download-avatar">
+          <div className="download-hero-icon">
             <Icons.File />
           </div>
 
-          <h2 className="download-title" id="download-file-name" title={fileData.originalName}>
+          <h2 className="download-file-title" id="download-file-name" title={fileData.originalName}>
             {fileData.originalName}
           </h2>
 
-          <div className="download-badges">
-            <span className="badge-tag">
+          <div className="badges-hud-row">
+            <span className="hud-chip">
               <strong>{formatBytes(fileData.size)}</strong>
             </span>
-            <span className="badge-tag">
+            <span className="hud-chip">
               <Icons.Clock />
               <span>{formatExpiryTime(fileData.expiresAt)}</span>
             </span>
             {fileData.downloadsCount !== undefined && (
-              <span className="badge-tag">
+              <span className="hud-chip">
                 <Icons.Download />
-                <span>{fileData.downloadsCount} download{fileData.downloadsCount === 1 ? '' : 's'}</span>
+                <span>{fileData.downloadsCount} DL</span>
               </span>
             )}
           </div>
 
           <button 
-            className="btn-action btn-action-primary"
+            className="btn-neon-cta"
             onClick={handleDownload}
             disabled={isDownloading}
             id="download-btn"
@@ -661,23 +714,24 @@ function DownloadView({ shareId, onGoHome }) {
           >
             {isDownloading ? (
               <>
-                <div className="spinner-anim"></div>
-                <span>Preparing Download...</span>
+                <div className="spinner-cyber"></div>
+                <span>FETCHING PAYLOAD...</span>
               </>
             ) : (
               <>
                 <Icons.Download />
-                <span>Download File</span>
+                <span>INITIATE DOWNLOAD</span>
               </>
             )}
           </button>
 
           <button 
-            className="btn-action btn-action-secondary"
+            className="btn-cyber-secondary"
+            style={{ width: '100%' }}
             onClick={onGoHome}
-            id="upload-own-file-btn"
+            id="beam-new-file-btn"
           >
-            <span>Send a File</span>
+            <span>BEAM ANOTHER FILE</span>
           </button>
         </div>
       ) : null}
