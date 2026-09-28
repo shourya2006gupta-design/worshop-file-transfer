@@ -1,0 +1,27 @@
+{
+  "name": "quickshare-workspace",
+  "version": "1.0.0",
+  "description": "QuickShare — Ephemeral, private file sharing web application",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "install:all": "npm --prefix backend install && npm --prefix frontend install",
+    "build": "npm --prefix frontend install && npm --prefix frontend run build && npm --prefix backend install",
+    "start": "node backend/server.js",
+    "dev:backend": "npm --prefix backend run dev",
+    "dev:frontend": "npm --prefix frontend run dev"
+  },
+  "keywords": [
+    "file-sharing",
+    "express",
+    "react",
+    "vite",
+    "ephemeral",
+    "temporary-files"
+  ],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
